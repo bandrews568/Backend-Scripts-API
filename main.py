@@ -57,26 +57,26 @@ def clean_data(list_name, game=None):
 	for line in list_name:
 		#Sub out jackpot amount
 		if game == 'pick3':
-			clean_data = re.sub('\$\d*$', '', line)
+			cleaned_data = re.sub('\$\d*$', '', line)
 		elif game == 'pick4':
-			clean_data = re.sub('\$\d,\d*$', '', line)
+			cleaned_data = re.sub('\$\d,\d*$', '', line)
+		elif game == 'aor':
+			cleaned_data = re.sub('\$\d*,\d*$', '', line)
 		#Sub out \n
-		if game is None:
-			#We don't need to sub out jackpot
-			clean_data = line.replace('\n', '')
-			clean_data = insert_comma(clean_data, game='cash5')
-		else: 
-			clean_data = clean_data.replace('\n', '')
-			clean_data = insert_comma(clean_data)
+		cleaned_data = cleaned_data.replace('\n', '')
 
-		if clean_data.startswith("google"):
-			continue		
+		if game == 'cash5':			
+			cleaned_data = insert_comma(cleaned_data, game='cash5')
+		else: 
+			cleaned_data = insert_comma(cleaned_data)
+
+		if cleaned_data.startswith("google"):
+			continue
 		
-		if " " in clean_data:
+		if " " in cleaned_data:
 			#Take out spaces
-			clean_data = clean_data.replace(' ', '')
-		cleaned_list.append(clean_data)
-	
+			cleaned_data = cleaned_data.replace(' ', '')
+		cleaned_list.append(cleaned_data)	
 	return cleaned_list
 
 def day_or_evening(list_name, time=None):
@@ -87,8 +87,7 @@ def day_or_evening(list_name, time=None):
 	if time == 'day':
 		cleaned_list = ["D," + item for item in list_name]
 	else:
-		cleaned_list = ["E," + item for item in list_name]
-	
+		cleaned_list = ["E," + item for item in list_name]	
 	return cleaned_list
 
 def pick3(url, time=None):
@@ -119,7 +118,7 @@ def pick3(url, time=None):
 def pick4(url, time=None):
 	soup = makesoup(url).find_all('tr')
 	unclean_pick4_list = []
-#Fix this so it searches for results with google in front of it
+
 	del unclean_pick4_list[0]
 
 	for line in soup:
@@ -151,7 +150,35 @@ def cash5(url):
 	clean_cash5_list = clean_data(unclean_cash5_list)
 	
 	del unclean_cash5_list
-	return clean_cash5_list		
+	return clean_cash5_list
+
+def all_or_nothing(url):
+	soup = makesoup(url).find_all('tr')
+	unclean_aor_list = []
+
+	for line in soup:
+		unclean_aor_list.append(line.text)
+
+	del unclean_aor_list[0]
+
+	clean_aor_list = clean_data(unclean_aor_list, 'aor')
+
+	del unclean_aor_list
+	return clean_aor_list
+
+def mega_millions(url):
+	soup = makesoup(url).find_all('tr')
+	unclean_mm_list = []
+
+	for line in soup:
+		unclean_mm_list.append(line.text)
+
+	del unclean_mm_list[0]
+
+	clean_mm_list = clean_data(unclean_mm_list, 'aor')
+
+	del unclean_mm_list
+	return clean_mm_list
 
 def main():
 	pick3_url_mid_day = game_links.get('pick3_mid_day')
