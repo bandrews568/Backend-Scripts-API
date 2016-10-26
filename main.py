@@ -1,12 +1,16 @@
-#http://www.powerball.com/powerball/winnums-text.txt
-#http://data.ny.gov/resource/d6yy-54nr.json
-#https://data.ny.gov/Government-Finance/Lottery-Mega-Millions-Winning-Numbers-Beginning-20/5xaw-6ayf
+#Script used to populate the database tables
+#For the most recent data we will use the information
+#off the NC lottery RSS feed
 import re
+import time
+import json
 import urllib2
 
+import wget
+from termcolor import colored
 from bs4 import BeautifulSoup
 
-game_links = {
+games = {
 	'pick3_mid_day': 'http://www.lotteryusa.com/north-carolina/midday-3/year',
 	'pick3_evening': 'http://www.lotteryusa.com/north-carolina/pick-3/year',
 	'pick4_mid_day': 'http://www.lotteryusa.com/north-carolina/midday-pick-4/year',
@@ -14,28 +18,43 @@ game_links = {
 	'cash5': 'http://www.lotteryusa.com/north-carolina/cash-5/year',
 	'aor_mid_day': 'http://www.lotteryusa.com/north-carolina/midday-all-or-nothing/year',
 	'aor_evening': 'http://www.lotteryusa.com/north-carolina/night-all-or-nothing/year',
-	'mega_millions': 'http://www.lotteryusa.com/north-carolina/mega-millions/year',
-	'powerball': 'http://www.powerball.com/powerball/winnums-text.txt',
+	'mega_millions': 'https://data.ny.gov/resource/h6w8-42p9.json',
 	'lucky_4_life': 'http://www.lotteryusa.com/north-carolina/lucky-4-life/year'
 }
+
+def color_error():
+	return colored('[Error] ', 'red')
+
+def color_attempt():
+	return colored('[Attempt] ', 'yellow')
+
+def color_sucess():
+	return colored('[Sucess] ', 'green')
 
 def makesoup(url):
 	"""
 		Request the page and parse the infromation
 	   	to return a soup object.
 	"""
-	req = urllib2.Request(url)
-	page = urllib2.urlopen(req)
-	soup = BeautifulSoup(page.read(), 'html.parser')
+	try:
+		req = urllib2.Request(url)
+		page = urllib2.urlopen(req)
+		soup = BeautifulSoup(page.read(), 'html.parser')
+	except urllib2.HTTPError as e:
+		print color_error() + "{} Response: {}".format(e.code, url)
+		return
+	except Exception as e:
+		print "[Error] makesoup(): {}".format(e)
+		return
 	return soup
 
 def pick3(url, time):
 	try:
-		print "[Attempt] Pick 3 '{}'".format(time)
+		print color_attempt() + "Pick 3 '{}'".format(time)
 		get_date = makesoup(url).find_all('td', {'class': 'date'})
 		get_numbers = makesoup(url).find_all('td', {'class': 'result'})
-	except:
-		print "[Error] Pick 3 '{}'".format(time)
+	except Exception as e:
+		print color_error() + "(Pick 3-{}): {}".format(time, e)
 		return
 
 	date_list = [line.text for line in get_date]
@@ -45,28 +64,28 @@ def pick3(url, time):
 		#This is the data structure: u'\n6\n6\n0\n0\n\n'
 		line = re.sub('\n', ',', line.text[1:], 2)
 		#This is what we're working with now: 
-		#u'2,6,14,31,38\n\n'
+		#u'\n2,6,14,31,38\n\n'
 		line = re.sub('\n', '', line)
 		number_list.append(line)
 
 	if time == 'day':
-		drawing_time = ["D" for item in range(len(date_list))]
-		pick3_list = zip(drawing_time, date_list, number_list)
+		pick3_list = zip("D" * len(date_list), date_list, number_list)
 	elif time == 'evening':
-		drawing_time = ["E" for item in range(len(date_list))]
-		pick3_list = zip(drawing_time, date_list, number_list)
+		pick3_list = zip("E" * len(date_list), date_list, number_list)
 	else:
-		raise ValueError("Time must be either day or evening, got '{}'".format(
-				time))
-	print pick3_list
+		raise ValueError("Time must be either day or evening, got '{}'" \
+			 			.format(time))
+
+	print color_sucess() + "Pick 3 '{}'".format(time)
+	return pick3_list
 
 def pick4(url, time):
 	try:
-		print "[Attempt] Pick 4 '{}'".format(time)
+		print color_attempt() + "Pick 4 '{}'".format(time)
 		get_date = makesoup(url).find_all('td', {'class': 'date'})
 		get_numbers = makesoup(url).find_all('td', {'class': 'result'})
-	except:
-		print "[Error] Pick 4 '{}'".format(time)
+	except Exception as e:
+		print color_error() + "(Pick 4-{}): {}".format(time, e)
 		return
 
 	date_list = [line.text for line in get_date]
@@ -76,29 +95,29 @@ def pick4(url, time):
 		#This is the data structure: u'\n6\n6\n0\n0\n\n'
 		line = re.sub('\n', ',', line.text[1:], 3)
 		#This is what we're working with now: 
-		#u'2,6,14,31,38\n\n'
+		#u'\n2,6,14,31,38\n\n'
 		line = re.sub('\n', '', line)
 		number_list.append(line)
 
 	if time == 'day':
-		drawing_time = ["D" for item in range(len(date_list))]
-		pick4_list = zip(drawing_time, date_list, number_list)
+		pick4_list = zip("D" * len(date_list), date_list, number_list)
 	elif time == 'evening':
-		drawing_time = ["E" for item in range(len(date_list))]
-		pick4_list = zip(drawing_time, date_list, number_list)
+		pick4_list = zip("E" * len(date_list), date_list, number_list)
 	else:
-		raise ValueError("Time must be either day or evening, got '{}'".format(
-				time))
-	print pick4_list
+		raise ValueError("Time must be either day or evening, got '{}'" \
+						.format(time))
+
+	print color_sucess() + "Pick 4 '{}'".format(time)
+	return pick4_list
 
 def cash5(url):
 	try:
-		print "[Attempt] Cash 5"
+		print color_attempt() + "Cash 5"
 		get_date = makesoup(url).find_all('td', {'class': 'date'})
 		get_numbers = makesoup(url).find_all('td', {'class': 'result'})
 		get_jackpot = makesoup(url).find_all('td', {'class': 'jackpot'})
-	except:
-		print "[Error] Cash 5"
+	except Exception as e:
+		print color_error() + "(Cash 5): {}".format(e)
 		return 
 
 	date_list = [line.text for line in get_date]
@@ -109,22 +128,22 @@ def cash5(url):
 		#This is the data structure: u'\n2\n6\n14\n31\n38\n\n'
 		line = re.sub('\n', ',', line.text[1:], 4)
 		#This is what we're working with now: 
-		#u'2,6,14,31,38\n\n'
+		#u'/n2,6,14,31,38\n\n'
 		line = re.sub('\n', '', line)
 		number_list.append(line)
 
 	cash5_list = zip(date_list, number_list, jackpot_list)
 	#(u'Thu, Oct 22, 2015', u'7,21,24,27,30', u'$60,000')
-	print "[Sucess] Cash 5"
-	print cash5_list
+	print color_sucess() + "Cash 5"
+	return cash5_list
 	
 def all_or_nothing(url, time):
 	try:
-		print "[Attempt] All or Nothing '{}'".format(time)
+		print color_attempt() + "All or Nothing '{}'".format(time)
 		get_date = makesoup(url).find_all('td', {'class': 'date'})
 		get_numbers = makesoup(url).find_all('td', {'class': 'result'})
-	except:
-		print "[Error] All or Nothing '{}'".format(time)
+	except Exception as e:
+		print color_error() + "(All or Nothing-{}): {}".format(time, e)
 		return
 
 	date_list = [line.text for line in get_date]
@@ -135,54 +154,132 @@ def all_or_nothing(url, time):
 		#u'\n3\n4\n6\n7\n9\n10\n11\n15\n17\n20\n23\n24\n\n'
 		line = re.sub('\n', ',', line.text[1:], 11)
 		#This is what we're working with now: 
-		#u'3,6,7,9,10,11,15,17,20,23,24\n\n'
+		#u'\n3,6,7,9,10,11,15,17,20,23,24\n\n'
 		line = re.sub('\n', '', line)
 		number_list.append(line)
 
 	if time == 'day':
-		drawing_time = ["D" for item in range(len(date_list))]
-		aor_list = zip(drawing_time, date_list, number_list)
+		aor_list = zip("D" * len(date_list), date_list, number_list)
 	elif time == 'evening':
-		drawing_time = ["E" for item in range(len(date_list))]
-		aor_list = zip(drawing_time, date_list, number_list)
+		aor_list = zip("E" * len(date_list), date_list, number_list)
 	else:
-		raise ValueError("Time must be either day or evening, got '{}'".format(
-				time))
+		raise ValueError("Time must be either day or evening, got '{}'" \
+						.format(time))
 
-	print "[Sucess] All or Nothing '{}'".format(time) 
+	print color_sucess() + "All or Nothing '{}'".format(time)
+	return aor_list 
 
-def powerball(url):
+def powerball():
 	try:
-		print "[Attempt] Powerball"
-		soup = makesoup(url)
-	except:
-		print "[Error] Powerball"
-		return
+		print color_attempt() + "Powerball"
+		filename = "powerball_{}.txt".format(time.strftime("%m-%d-%Y"))
+		print wget.download("http://www.powerball.com/powerball/winnums-text.txt", out=filename)
+	except Exception as e:
+		print color_error() + "(Powerball): {}".format(e)
+		return 
 	
+	#Make sure we are looking at the current data
+	#Example filename: powerball_10-16-2016.txt
+	if filename[10:20] == time.strftime("%m-%d-%Y"):
+		pass
+	else:
+		raise ValueError("'{}' is not current").foramt(filename)
+
 	date_list = []
 	number_list = []
 	
-	for line in soup:
-		#Data structure: 
-		#10/01/2016  12  64  50  61  02  01  2
-		date = re.findall('\d\d/\d\d/\d{4}', line)
-		number = re.sub('\d\d/\d\d/\d{4}', '', line)
-		number = re.sub('\r\n', ',', number)
-		number_list.append(number)
-	print number_list
-		#date_list.append(date)
+	try:
+		#Data structures:
+		#Note: double spaces between all the powerball #'s
+		#Without mulitpler
+		#06/21/2000  43  01  28  27  24  25 \r\n
+		#With
+		#04/19/2006  32  53  34  05  28  10  4 \r\n
+		with open(filename, "r") as f:
+			for line in f:
+				date_data = line[0:10]
+				number_data = line[11:]
+				number_data = number_data.lstrip().rstrip()
+				number_data = number_data.split("  ")
+				date_list.append(date_data)
+				number_list.append(number_data)
+	except IOError:
+		print "Error opening: {}".format(filename)
+
+	powerball_list = zip(date_list, number_list)
+
+	print color_sucess() + "Powerball"
+	return powerball_list
+
+def mega_millions():
+	"""
+		Data structure(JSON):
+		{ 	
+		"draw_date": "2016-10-21T00:00:00.000",
+		"mega_ball": "03",
+		"multiplier": "04",
+		"winning_numbers": "12 43 44 48 66"
+		}
+	"""
+	try:
+		print color_attempt() + "Mega Millions"
+		url = games.get('mega_millions')
+		open_page = urllib2.urlopen(url)
+		json_data = json.loads(open_page.read())
+	except urllib2.HTTPError as e:
+		print color_error() + "{} Response: {}".format(err.code, url)
+		return
+	except Exception as e:
+		print color_error() + "(Mega Millions): {}".format(e)
+
+	data_list = []
+	
+	for line in json_data:
+		data_list.append(line)
+	print color_sucess() + "Mega Millions"
+	return data_list
+
+def lucky_4_life(url):
+	try:
+		print color_attempt() + "Lucky For Life"
+		get_date = makesoup(url).find_all('td', {'class': 'date'})
+		get_numbers = makesoup(url).find_all('td', {'class': 'result'})
+	except Exception as e:
+		print color_error() + "(Lucky For Life): {}".format(e)
+		return
+
+	number_list = []
+	date_list = [line.text for line in get_date]
+
+	for line in get_numbers:
+		#This is the data structure: 
+		#'\n6\n23\n33\n44\n45\n9  Lucky Ball\n'
+		line = re.sub('\n', ' ', line.text)
+		#This is what we're working with now:
+		#24 28 30 33 34 18  Lucky Ball
+		line = re.sub('Lucky Ball', '', line)
+		#' 24 28 30 33 34 18 '
+		line = line.lstrip().rstrip()
+		#Put commas between the numbers
+		line = re.sub(' ', ',', line) 
+		number_list.append(line)
+
+	lucky_list = zip(date_list, number_list)
+
+	print color_sucess() + "Lucky For Life"
+	return lucky_list 
+
 def main():
-	pick3_url_mid_day = game_links.get('pick3_mid_day')
-	pick3_url_evening = game_links.get('pick3_evening')
-	pick4_url_mid_day = game_links.get('pick4_mid_day')
-	pick4_url_evening = game_links.get('pick4_evening')
-	cash5_url = game_links.get('cash5')
-	aor_url_mid_day = game_links.get('aor_mid_day')
-	aor_url_evening = game_links.get('aor_evening')
-	mega_millions_url = game_links.get('mega_millions')
-	powerball_url = game_links.get('powerball')
-	lucky_4_life_url = game_links.get('lucky_4_life')
-	print powerball(powerball_url)
+	pick3(games.get('pick3_mid_day'), 'day')
+	pick3(games.get('pick3_evening'), 'evening')
+	pick4(games.get('pick4_mid_day'), 'day')
+	pick4(games.get('pick4_evening'), 'evening')
+	cash5(games.get('cash5'))
+	all_or_nothing(games.get('aor_mid_day'), 'day')
+	all_or_nothing(games.get('aor_evening'), 'evening')
+	powerball()
+	mega_millions()
+	lucky_4_life(games.get('lucky_4_life'))
 
 if __name__ == '__main__':
 	main()
