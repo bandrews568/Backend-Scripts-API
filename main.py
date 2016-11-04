@@ -14,6 +14,7 @@ color_attempt = colored('[Attempt] ', 'yellow')
 color_error = colored('[Error] ', 'red')
 color_success = colored('[Success] ', 'green')
 
+
 def makesoup(url):
     """
         Request the page and parse the infromation
@@ -57,10 +58,13 @@ def pick3(url, time):
     elif time == 'evening':
         pick3_list = zip("E" * len(date_list), date_list, number_list)
     else:
-        raise ValueError("Time must be either day or evening, got '{}'" \
+        raise ValueError("Time must be either day or evening, got '{}'"
                          .format(time))
 
     print color_success + "Pick 3 '{}'".format(time)
+    # Returns data in a list of tuples in the following formats
+    # ('D', u'Thu, Nov 03, 2016', u'4,0,4')
+    # ('E', u'Wed, Nov 02, 2016', u'2,4,5')
     return pick3_list
 
 
@@ -89,10 +93,13 @@ def pick4(url, time):
     elif time == 'evening':
         pick4_list = zip("E" * len(date_list), date_list, number_list)
     else:
-        raise ValueError("Time must be either day or evening, got '{}'" \
+        raise ValueError("Time must be either day or evening, got '{}'"
                          .format(time))
 
     print color_success + "Pick 4 '{}'".format(time)
+    # Returns data in a list of tuples in the following formats
+    # ('D', u'Thu, Nov 03, 2016', u'0,5,1,0')
+    # ('E', u'Wed, Nov 02, 2016', u'9,2,6,6')
     return pick4_list
 
 
@@ -119,8 +126,9 @@ def cash5(url):
         number_list.append(line)
 
     cash5_list = zip(date_list, number_list, jackpot_list)
-    # (u'Thu, Oct 22, 2015', u'7,21,24,27,30', u'$60,000')
     print color_success + "Cash 5"
+    # Returns a list of tuples in this format:
+    # (u'Wed, Nov 02, 2016', u'2,24,29,33,38', u'$100,000')
     return cash5_list
 
 
@@ -150,10 +158,12 @@ def all_or_nothing(url, time):
     elif time == 'evening':
         aor_list = zip("E" * len(date_list), date_list, number_list)
     else:
-        raise ValueError("Time must be either day or evening, got '{}'" \
+        raise ValueError("Time must be either day or evening, got '{}'"
                          .format(time))
 
     print color_success + "All or Nothing '{}'".format(time)
+    # Returns a list of tuples in this format:
+    # ('D', u'Thu, Jun 30, 2016', u'1,3,6,9,11,12,14,15,16,19,20,22')
     return aor_list
 
 
@@ -169,9 +179,7 @@ def powerball():
 
     # Make sure we are looking at the current data
     # Example filename: powerball_10-16-2016.txt
-    if filename[10:20] == time.strftime("%m-%d-%Y"):
-        pass
-    else:
+    if not filename[10:20] == time.strftime("%m-%d-%Y"):
         raise ValueError("'{}' is not current".format(filename))
 
     date_list = []
@@ -180,7 +188,7 @@ def powerball():
     try:
         # Data structures:
         # Note: double spaces between all the powerball #'s
-        # Without multipler
+        # Without multiplier
         # 06/21/2000  43  01  28  27  24  25 \r\n
         # With
         # 04/19/2006  32  53  34  05  28  10  4 \r\n
@@ -190,14 +198,19 @@ def powerball():
                 number_data = line[11:]
                 number_data = number_data.lstrip().rstrip()
                 number_data = number_data.split("  ")
+                number_data = ','.join(number_data)
                 date_list.append(date_data)
                 number_list.append(number_data)
     except IOError:
         print color_error + "opening: {}".format(filename)
 
     powerball_list = zip(date_list, number_list)
+    # Deleting: ('Draw Date ', ['WB1 WB2 WB3 WB4 WB5 PB', 'PP'])
+    del powerball_list[0]
 
     print color_success + "Powerball"
+    # Returns a list of tuples in this format:
+    # ('11/02/2016', '18,54,61,13,37,05,2')
     return powerball_list
 
 
@@ -211,9 +224,10 @@ def mega_millions():
         "winning_numbers": "12 43 44 48 66"
         }
     """
+    url = 'https://data.ny.gov/resource/h6w8-42p9.json'
+
     try:
         print color_attempt + "Mega Millions"
-        url = 'https://data.ny.gov/resource/h6w8-42p9.json'
         open_page = urllib2.urlopen(url)
         json_data = json.loads(open_page.read())
     except urllib2.HTTPError as e:
@@ -222,12 +236,24 @@ def mega_millions():
     except Exception as e:
         print color_error + "(Mega Millions): {}".format(e)
 
-    data_list = []
+    mm_list = []
 
     for line in json_data:
-        data_list.append(line)
+        date = line['draw_date']
+        # Take out the time: 2007-05-11T00:00:00.000
+        date = re.sub('T\d\d:\d\d:00\.000', '', date)
+        try:
+            numbers = line['winning_numbers'] + ' ' + line['mega_ball'] + \
+                      ' ' + line['multiplier']
+        except KeyError:
+            # line['multiplier'] isn't in older results
+            numbers = line['winning_numbers'] + ' ' + line['mega_ball']
+        mm_list.append((date, numbers))
+
     print color_success + "Mega Millions"
-    return data_list
+    # Returns a list of tuples in this format:
+    # (u'2016-11-01', u'19 24 31 39 45 13 02')
+    return mm_list
 
 
 def lucky_4_life(url):
@@ -258,31 +284,33 @@ def lucky_4_life(url):
     lucky_list = zip(date_list, number_list)
 
     print color_success + "Lucky For Life"
+    # Returns a list of tuples in this format:
+    # (u'Mon, Oct 31, 2016', u'3,4,12,32,45,5')
     return lucky_list
 
 
 def main():
     games = {
-        'pick3_mid_day': 'http://www.lotteryusa.com/north-carolina/midday-3/year',
+        'pick3_day': 'http://www.lotteryusa.com/north-carolina/midday-3/year',
         'pick3_evening': 'http://www.lotteryusa.com/north-carolina/pick-3/year',
-        'pick4_mid_day': 'http://www.lotteryusa.com/north-carolina/midday-pick-4/year',
+        'pick4_day': 'http://www.lotteryusa.com/north-carolina/midday-pick-4/year',
         'pick4_evening': 'http://www.lotteryusa.com/north-carolina/pick-4/year',
         'cash5': 'http://www.lotteryusa.com/north-carolina/cash-5/year',
-        'aor_mid_day': 'http://www.lotteryusa.com/north-carolina/midday-all-or-nothing/year',
+        'aor_day': 'http://www.lotteryusa.com/north-carolina/midday-all-or-nothing/year',
         'aor_evening': 'http://www.lotteryusa.com/north-carolina/night-all-or-nothing/year',
         'lucky_4_life': 'http://www.lotteryusa.com/north-carolina/lucky-4-life/year'
     }
 
-    pick3(games.get('pick3_mid_day'), 'day')
-    pick3(games.get('pick3_evening'), 'evening')
-    pick4(games.get('pick4_mid_day'), 'day')
-    pick4(games.get('pick4_evening'), 'evening')
-    cash5(games.get('cash5'))
-    all_or_nothing(games.get('aor_mid_day'), 'day')
-    all_or_nothing(games.get('aor_evening'), 'evening')
+    pick3(games['pick3_day'], 'day')
+    pick3(games['pick3_evening'], 'evening')
+    pick4(games['pick4_day'], 'day')
+    pick4(games['pick4_evening'], 'evening')
+    cash5(games['cash5'])
+    all_or_nothing(games['aor_day'], 'day')
+    all_or_nothing(games['aor_evening'], 'evening')
     powerball()
     mega_millions()
-    lucky_4_life(games.get('lucky_4_life'))
+    lucky_4_life(games['lucky_4_life'])
 
 
 if __name__ == '__main__':
