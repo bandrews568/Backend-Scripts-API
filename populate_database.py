@@ -5,6 +5,7 @@ import re
 import time
 import json
 import urllib2
+from datetime import datetime
 
 import wget
 from termcolor import colored
@@ -32,6 +33,19 @@ def makesoup(url):
         return
     return soup
 
+def format_date(date):
+    """
+        Change date to a format SQLite accepts.
+        From: 'Thu, Nov 03, 2016'
+        To: '2016/11/03'
+    """
+    try:
+        og_date = datetime.strptime(date, "%a, %b %d, %Y")
+        f_date = og_date.strftime('%Y-%m-%d')
+        return f_date
+    except Exception as e:
+        print color_error + "format_date(): {}".format(e)
+
 
 def pick3(url, time):
     try:
@@ -42,7 +56,7 @@ def pick3(url, time):
         print color_error + "(Pick 3-{}): {}".format(time, e)
         return
 
-    date_list = [line.text for line in get_date]
+    date_list = [format_date(line.text) for line in get_date]
     number_list = []
 
     for line in get_numbers:
@@ -77,7 +91,7 @@ def pick4(url, time):
         print color_error + "(Pick 4-{}): {}".format(time, e)
         return
 
-    date_list = [line.text for line in get_date]
+    date_list = [format_date(line.text) for line in get_date]
     number_list = []
 
     for line in get_numbers:
@@ -113,7 +127,7 @@ def cash5(url):
         print color_error + "(Cash 5): {}".format(e)
         return
 
-    date_list = [line.text for line in get_date]
+    date_list = [format_date(line.text) for line in get_date]
     jackpot_list = [line.text for line in get_jackpot]
     number_list = []
 
@@ -141,7 +155,7 @@ def all_or_nothing(url, time):
         print color_error + "(All or Nothing-{}): {}".format(time, e)
         return
 
-    date_list = [line.text for line in get_date]
+    date_list = [format_date(line.text) for line in get_date]
     number_list = []
 
     for line in get_numbers:
@@ -194,15 +208,24 @@ def powerball():
         # 04/19/2006  32  53  34  05  28  10  4 \r\n
         with open(filename, "r") as f:
             for line in f:
-                date_data = line[0:10]
+                try:
+                    date_data = line[0:10]
+                    #Reformat the date
+                    date = datetime.strptime(date_data, "%m/%d/%Y")
+                    date = date.strftime('%Y-%m-%d')
+                except Exception as e:
+                    print color_error + "(Powerball): {}".format(e)
+                    print color_error + "(Powerball): {}".format(line)
+                    continue
                 number_data = line[11:]
                 number_data = number_data.lstrip().rstrip()
                 number_data = number_data.split("  ")
                 number_data = ','.join(number_data)
-                date_list.append(date_data)
+                date_list.append(date)
                 number_list.append(number_data)
     except IOError:
         print color_error + "opening: {}".format(filename)
+        return
 
     powerball_list = zip(date_list, number_list)
     # Deleting: ('Draw Date ', ['WB1 WB2 WB3 WB4 WB5 PB', 'PP'])
@@ -210,7 +233,7 @@ def powerball():
 
     print color_success + "Powerball"
     # Returns a list of tuples in this format:
-    # ('11/02/2016', '18,54,61,13,37,05,2')
+    # ('2016/11/02', '18,54,61,13,37,05,2')
     return powerball_list
 
 
@@ -265,8 +288,8 @@ def lucky_4_life(url):
         print color_error + "(Lucky For Life): {}".format(e)
         return
 
+    date_list = [format_date(line.text) for line in get_date]
     number_list = []
-    date_list = [line.text for line in get_date]
 
     for line in get_numbers:
         # This is the data structure:
