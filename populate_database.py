@@ -77,8 +77,8 @@ def pick3(url, time):
 
     print color_success + "Pick 3 '{}'".format(time)
     # Returns data in a list of tuples in the following formats
-    # ('D', u'Thu, Nov 03, 2016', u'4,0,4')
-    # ('E', u'Wed, Nov 02, 2016', u'2,4,5')
+    # ('D', u'2016/11/02, u'4,0,4')
+    # ('E', u'2016/11/02', u'2,4,5')
     return pick3_list
 
 
@@ -112,8 +112,8 @@ def pick4(url, time):
 
     print color_success + "Pick 4 '{}'".format(time)
     # Returns data in a list of tuples in the following formats
-    # ('D', u'Thu, Nov 03, 2016', u'0,5,1,0')
-    # ('E', u'Wed, Nov 02, 2016', u'9,2,6,6')
+    # ('D', u'2016/11/02', u'0,5,1,0')
+    # ('E', u'2016/11/02', u'9,2,6,6')
     return pick4_list
 
 
@@ -142,7 +142,7 @@ def cash5(url):
     cash5_list = zip(date_list, number_list, jackpot_list)
     print color_success + "Cash 5"
     # Returns a list of tuples in this format:
-    # (u'Wed, Nov 02, 2016', u'2,24,29,33,38', u'$100,000')
+    # (u'2016/11/02', u'2,24,29,33,38', u'$100,000')
     return cash5_list
 
 
@@ -177,7 +177,7 @@ def all_or_nothing(url, time):
 
     print color_success + "All or Nothing '{}'".format(time)
     # Returns a list of tuples in this format:
-    # ('D', u'Thu, Jun 30, 2016', u'1,3,6,9,11,12,14,15,16,19,20,22')
+    # ('D', u'2016/11/02', u'1,3,6,9,11,12,14,15,16,19,20,22')
     return aor_list
 
 
@@ -210,7 +210,7 @@ def powerball():
             for line in f:
                 try:
                     date_data = line[0:10]
-                    #Reformat the date
+                    # Reformat the date
                     date = datetime.strptime(date_data, "%m/%d/%Y")
                     date = date.strftime('%Y-%m-%d')
                 except Exception as e:
@@ -308,7 +308,7 @@ def lucky_4_life(url):
 
     print color_success + "Lucky For Life"
     # Returns a list of tuples in this format:
-    # (u'Mon, Oct 31, 2016', u'3,4,12,32,45,5')
+    # (u'2016-11-01', u'3,4,12,32,45,5')
     return lucky_list
 
 
