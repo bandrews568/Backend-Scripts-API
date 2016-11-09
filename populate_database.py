@@ -7,6 +7,8 @@ import json
 import urllib2
 from datetime import datetime
 
+from database_tools import DatabaseTools
+
 import wget
 from termcolor import colored
 from bs4 import BeautifulSoup
@@ -14,6 +16,8 @@ from bs4 import BeautifulSoup
 color_attempt = colored('[Attempt] ', 'yellow')
 color_error = colored('[Error] ', 'red')
 color_success = colored('[Success] ', 'green')
+
+add_row = lambda x, y: DatabaseTools.insert_row(x, y)
 
 
 def makesoup(url):
@@ -75,6 +79,9 @@ def pick3(url, time):
         raise ValueError("Time must be either day or evening, got '{}'"
                          .format(time))
 
+    for x in pick3_list: 
+        add_row('pick3', x)
+
     print color_success + "Pick 3 '{}'".format(time)
     # Returns data in a list of tuples in the following formats
     # ('D', u'2016/11/02, u'4,0,4')
@@ -110,6 +117,9 @@ def pick4(url, time):
         raise ValueError("Time must be either day or evening, got '{}'"
                          .format(time))
 
+    for x in pick4_list: 
+        add_row('pick4', x)
+
     print color_success + "Pick 4 '{}'".format(time)
     # Returns data in a list of tuples in the following formats
     # ('D', u'2016/11/02', u'0,5,1,0')
@@ -140,6 +150,10 @@ def cash5(url):
         number_list.append(line)
 
     cash5_list = zip(date_list, number_list, jackpot_list)
+
+    for x in cash5_list: 
+        add_row('cash5', x)
+    
     print color_success + "Cash 5"
     # Returns a list of tuples in this format:
     # (u'2016/11/02', u'2,24,29,33,38', u'$100,000')
@@ -174,6 +188,9 @@ def all_or_nothing(url, time):
     else:
         raise ValueError("Time must be either day or evening, got '{}'"
                          .format(time))
+
+    for x in aor_list: 
+        add_row('all_or_nothing', x)
 
     print color_success + "All or Nothing '{}'".format(time)
     # Returns a list of tuples in this format:
@@ -218,7 +235,7 @@ def powerball():
                     print color_error + "(Powerball): {}".format(line)
                     continue
                 number_data = line[11:]
-                number_data = number_data.lstrip().rstrip()
+                number_data = number_data.strip()
                 number_data = number_data.split("  ")
                 number_data = ','.join(number_data)
                 date_list.append(date)
@@ -230,6 +247,9 @@ def powerball():
     powerball_list = zip(date_list, number_list)
     # Deleting: ('Draw Date ', ['WB1 WB2 WB3 WB4 WB5 PB', 'PP'])
     del powerball_list[0]
+
+    for x in powerball_list: 
+        add_row('powerball', x)
 
     print color_success + "Powerball"
     # Returns a list of tuples in this format:
@@ -273,6 +293,9 @@ def mega_millions():
             numbers = line['winning_numbers'] + ' ' + line['mega_ball']
         mm_list.append((date, numbers))
 
+    for x in mm_list: 
+        add_row('mega_millions', x)
+
     print color_success + "Mega Millions"
     # Returns a list of tuples in this format:
     # (u'2016-11-01', u'19 24 31 39 45 13 02')
@@ -299,12 +322,15 @@ def lucky_4_life(url):
         # 24 28 30 33 34 18  Lucky Ball
         line = re.sub('Lucky Ball', '', line)
         # ' 24 28 30 33 34 18 '
-        line = line.lstrip().rstrip()
+        line = line.strip()
         # Put commas between the numbers
         line = re.sub(' ', ',', line)
         number_list.append(line)
 
     lucky_list = zip(date_list, number_list)
+
+    for x in lucky_list: 
+        add_row('lucky_for_life', x)
 
     print color_success + "Lucky For Life"
     # Returns a list of tuples in this format:
