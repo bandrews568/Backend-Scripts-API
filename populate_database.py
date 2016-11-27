@@ -5,6 +5,7 @@ import re
 import time
 import json
 import urllib2
+import logging
 from datetime import datetime
 
 from database_tools import DatabaseTools
@@ -13,11 +14,13 @@ import wget
 from termcolor import colored
 from bs4 import BeautifulSoup
 
+
+logging.basicConfig(level=logging.ERROR and logging.INFO)
+logger = logging.getLogger(__file__)
+
 color_attempt = colored('[Attempt] ', 'yellow')
 color_error = colored('[Error] ', 'red')
 color_success = colored('[Success] ', 'green')
-
-add_row = lambda x, y: DatabaseTools.insert_row(x, y)
 
 
 def makesoup(url):
@@ -30,10 +33,10 @@ def makesoup(url):
         page = urllib2.urlopen(req)
         soup = BeautifulSoup(page.read(), 'html.parser')
     except urllib2.HTTPError as e:
-        print color_error + "{} Response: {}".format(e.code, url)
+        logger.error(color_error + "{} Response: {}".format(e.code, url))
         return
     except Exception as e:
-        print color_error + "makesoup(): {}".format(e)
+        logger.error(color_error + "makesoup(): {}".format(e))
         return
     return soup
 
@@ -48,16 +51,16 @@ def format_date(date):
         f_date = og_date.strftime('%Y-%m-%d')
         return f_date
     except Exception as e:
-        print color_error + "format_date(): {}".format(e)
+        logger.error(color_error + "format_date(): {}".format(e))
 
 
 def pick3(url, time):
     try:
-        print color_attempt + "Pick 3 '{}'".format(time)
+        logger.info(color_attempt + "Pick 3 '{}'".format(time))
         get_date = makesoup(url).find_all('td', {'class': 'date'})
         get_numbers = makesoup(url).find_all('td', {'class': 'result'})
     except Exception as e:
-        print color_error + "(Pick 3-{}): {}".format(time, e)
+        logger.error(color_error + "(Pick 3-{}): {}".format(time, e))
         return
 
     date_list = [format_date(line.text) for line in get_date]
@@ -79,10 +82,10 @@ def pick3(url, time):
         raise ValueError("Time must be either day or evening, got '{}'"
                          .format(time))
 
-    for x in pick3_list: 
-        add_row('pick3', x)
+    for line in pick3_list: 
+        DatabaseTools.insert_row('pick3', line)
 
-    print color_success + "Pick 3 '{}'".format(time)
+    logger.info(color_success + "Pick 3 '{}'".format(time))
     # Returns data in a list of tuples in the following formats
     # ('D', u'2016/11/02, u'4,0,4')
     # ('E', u'2016/11/02', u'2,4,5')
@@ -91,11 +94,11 @@ def pick3(url, time):
 
 def pick4(url, time):
     try:
-        print color_attempt + "Pick 4 '{}'".format(time)
+        logger.info(color_attempt + "Pick 4 '{}'".format(time))
         get_date = makesoup(url).find_all('td', {'class': 'date'})
         get_numbers = makesoup(url).find_all('td', {'class': 'result'})
     except Exception as e:
-        print color_error + "(Pick 4-{}): {}".format(time, e)
+        logger.error(color_error + "(Pick 4-{}): {}".format(time, e))
         return
 
     date_list = [format_date(line.text) for line in get_date]
@@ -117,10 +120,10 @@ def pick4(url, time):
         raise ValueError("Time must be either day or evening, got '{}'"
                          .format(time))
 
-    for x in pick4_list: 
-        add_row('pick4', x)
+    for line in pick4_list: 
+        DatabaseTools.insert_row('pick4', line)
 
-    print color_success + "Pick 4 '{}'".format(time)
+    logger.info(color_success + "Pick 4 '{}'".format(time))
     # Returns data in a list of tuples in the following formats
     # ('D', u'2016/11/02', u'0,5,1,0')
     # ('E', u'2016/11/02', u'9,2,6,6')
@@ -129,12 +132,12 @@ def pick4(url, time):
 
 def cash5(url):
     try:
-        print color_attempt + "Cash 5"
+        logger.info(color_attempt + "Cash 5")
         get_date = makesoup(url).find_all('td', {'class': 'date'})
         get_numbers = makesoup(url).find_all('td', {'class': 'result'})
         get_jackpot = makesoup(url).find_all('td', {'class': 'jackpot'})
     except Exception as e:
-        print color_error + "(Cash 5): {}".format(e)
+        logger.error(color_error + "(Cash 5): {}".format(e))
         return
 
     date_list = [format_date(line.text) for line in get_date]
@@ -151,10 +154,10 @@ def cash5(url):
 
     cash5_list = zip(date_list, number_list, jackpot_list)
 
-    for x in cash5_list: 
-        add_row('cash5', x)
+    for line in cash5_list: 
+        DatabaseTools.insert_row('cash5', line)
     
-    print color_success + "Cash 5"
+    logger.info(color_success + "Cash 5")
     # Returns a list of tuples in this format:
     # (u'2016/11/02', u'2,24,29,33,38', u'$100,000')
     return cash5_list
@@ -162,11 +165,11 @@ def cash5(url):
 
 def all_or_nothing(url, time):
     try:
-        print color_attempt + "All or Nothing '{}'".format(time)
+        logger.info(color_attempt + "All or Nothing '{}'".format(time))
         get_date = makesoup(url).find_all('td', {'class': 'date'})
         get_numbers = makesoup(url).find_all('td', {'class': 'result'})
     except Exception as e:
-        print color_error + "(All or Nothing-{}): {}".format(time, e)
+        logger.error(color_error + "(All or Nothing-{}): {}".format(time, e))
         return
 
     date_list = [format_date(line.text) for line in get_date]
@@ -189,10 +192,10 @@ def all_or_nothing(url, time):
         raise ValueError("Time must be either day or evening, got '{}'"
                          .format(time))
 
-    for x in aor_list: 
-        add_row('all_or_nothing', x)
+    for line in aor_list: 
+        DatabaseTools.insert_row('all_or_nothing', line)
 
-    print color_success + "All or Nothing '{}'".format(time)
+    logger.info(color_success + "All or Nothing '{}'".format(time))
     # Returns a list of tuples in this format:
     # ('D', u'2016/11/02', u'1,3,6,9,11,12,14,15,16,19,20,22')
     return aor_list
@@ -200,12 +203,12 @@ def all_or_nothing(url, time):
 
 def powerball():
     try:
-        print color_attempt + "Powerball"
+        logger.info(color_attempt + "Powerball")
         filename = "powerball_{}.txt".format(time.strftime("%m-%d-%Y"))
         url = "http://www.powerball.com/powerball/winnums-text.txt"
-        print wget.download(url, out=filename)
+        wget.download(url, out=filename)
     except Exception as e:
-        print color_error + "(Powerball): {}".format(e)
+        logger.error(color_error + "(Powerball): {}".format(e))
         return
 
     # Make sure we are looking at the current data
@@ -231,27 +234,25 @@ def powerball():
                     date = datetime.strptime(date_data, "%m/%d/%Y")
                     date = date.strftime('%Y-%m-%d')
                 except Exception as e:
-                    print color_error + "(Powerball): {}".format(e)
-                    print color_error + "(Powerball): {}".format(line)
+                    logger.error(color_error + "(Powerball): {}".format(e))
+                    logger.error(color_error + "(Powerball): {}".format(line))
                     continue
-                number_data = line[11:]
-                number_data = number_data.strip()
-                number_data = number_data.split("  ")
-                number_data = ','.join(number_data)
+                raw_number_data = line[11:].strip().split("  ")
+                number_data = ','.join(raw_number_data)
                 date_list.append(date)
                 number_list.append(number_data)
     except IOError:
-        print color_error + "opening: {}".format(filename)
+        logger.error(color_error + "opening: {}".format(filename))
         return
 
     powerball_list = zip(date_list, number_list)
     # Deleting: ('Draw Date ', ['WB1 WB2 WB3 WB4 WB5 PB', 'PP'])
     del powerball_list[0]
 
-    for x in powerball_list: 
-        add_row('powerball', x)
+    for line in powerball_list: 
+        DatabaseTools.insert_row('powerball', line)
 
-    print color_success + "Powerball"
+    logger.info(color_success + "Powerball")
     # Returns a list of tuples in this format:
     # ('2016/11/02', '18,54,61,13,37,05,2')
     return powerball_list
@@ -270,14 +271,14 @@ def mega_millions():
     url = 'https://data.ny.gov/resource/h6w8-42p9.json'
 
     try:
-        print color_attempt + "Mega Millions"
+        logger.info(color_attempt + "Mega Millions")
         open_page = urllib2.urlopen(url)
         json_data = json.loads(open_page.read())
     except urllib2.HTTPError as e:
-        print color_error + "{} Response: {}".format(e.code, url)
+        logger.error(color_error + "{} Response: {}".format(e.code, url))
         return
     except Exception as e:
-        print color_error + "(Mega Millions): {}".format(e)
+        logger.error(color_error + "(Mega Millions): {}".format(e))
 
     mm_list = []
 
@@ -293,10 +294,10 @@ def mega_millions():
             numbers = line['winning_numbers'] + ' ' + line['mega_ball']
         mm_list.append((date, numbers))
 
-    for x in mm_list: 
-        add_row('mega_millions', x)
+    for line in mm_list: 
+        DatabaseTools.insert_row('mega_millions', line)
 
-    print color_success + "Mega Millions"
+    logger.info(color_success + "Mega Millions")
     # Returns a list of tuples in this format:
     # (u'2016-11-01', u'19 24 31 39 45 13 02')
     return mm_list
@@ -304,11 +305,11 @@ def mega_millions():
 
 def lucky_4_life(url):
     try:
-        print color_attempt + "Lucky For Life"
+        logger.info(color_attempt + "Lucky For Life")
         get_date = makesoup(url).find_all('td', {'class': 'date'})
         get_numbers = makesoup(url).find_all('td', {'class': 'result'})
     except Exception as e:
-        print color_error + "(Lucky For Life): {}".format(e)
+        logger.error(color_error + "(Lucky For Life): {}".format(e))
         return
 
     date_list = [format_date(line.text) for line in get_date]
@@ -319,20 +320,18 @@ def lucky_4_life(url):
         # '\n6\n23\n33\n44\n45\n9  Lucky Ball\n'
         line = re.sub('\n', ' ', line.text)
         # This is what we're working with now:
-        # 24 28 30 33 34 18  Lucky Ball
-        line = re.sub('Lucky Ball', '', line)
-        # ' 24 28 30 33 34 18 '
-        line = line.strip()
+        # ' 24 28 30 33 34 18  Lucky Ball '
+        line = re.sub('Lucky Ball', '', line).strip()
         # Put commas between the numbers
         line = re.sub(' ', ',', line)
         number_list.append(line)
 
     lucky_list = zip(date_list, number_list)
 
-    for x in lucky_list: 
-        add_row('lucky_for_life', x)
+    for line in lucky_list: 
+        DatabaseTools.insert_row('lucky_for_life', line)
 
-    print color_success + "Lucky For Life"
+    logger.info(color_success + "Lucky For Life")
     # Returns a list of tuples in this format:
     # (u'2016-11-01', u'3,4,12,32,45,5')
     return lucky_list
