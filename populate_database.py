@@ -15,8 +15,8 @@ from termcolor import colored
 from bs4 import BeautifulSoup
 
 
-logging.basicConfig(level=logging.ERROR and logging.INFO)
 logger = logging.getLogger(__file__)
+logging.basicConfig(level=logging.ERROR and logging.INFO)
 
 color_attempt = colored('[Attempt] ', 'yellow')
 color_error = colored('[Error] ', 'red')
@@ -57,8 +57,9 @@ def format_date(date):
 def pick3(url, time):
     try:
         logger.info(color_attempt + "Pick 3 '{}'".format(time))
-        get_date = makesoup(url).find_all('td', {'class': 'date'})
-        get_numbers = makesoup(url).find_all('td', {'class': 'result'})
+        pick3_data = makesoup(url)
+        get_date = pick3_data.find_all('td', {'class': 'date'})
+        get_numbers = pick3_data.find_all('td', {'class': 'result'})
     except Exception as e:
         logger.error(color_error + "(Pick 3-{}): {}".format(time, e))
         return
@@ -95,8 +96,9 @@ def pick3(url, time):
 def pick4(url, time):
     try:
         logger.info(color_attempt + "Pick 4 '{}'".format(time))
-        get_date = makesoup(url).find_all('td', {'class': 'date'})
-        get_numbers = makesoup(url).find_all('td', {'class': 'result'})
+        pick4_data = makesoup(url)
+        get_date = pick4_data.find_all('td', {'class': 'date'})
+        get_numbers = pick4_data.find_all('td', {'class': 'result'})
     except Exception as e:
         logger.error(color_error + "(Pick 4-{}): {}".format(time, e))
         return
@@ -133,9 +135,10 @@ def pick4(url, time):
 def cash5(url):
     try:
         logger.info(color_attempt + "Cash 5")
-        get_date = makesoup(url).find_all('td', {'class': 'date'})
-        get_numbers = makesoup(url).find_all('td', {'class': 'result'})
-        get_jackpot = makesoup(url).find_all('td', {'class': 'jackpot'})
+        cash5_data = makesoup(url)
+        get_date = cash5_data.find_all('td', {'class': 'date'})
+        get_numbers = cash5_data.find_all('td', {'class': 'result'})
+        get_jackpot = cash5_data.find_all('td', {'class': 'jackpot'})
     except Exception as e:
         logger.error(color_error + "(Cash 5): {}".format(e))
         return
@@ -166,8 +169,9 @@ def cash5(url):
 def all_or_nothing(url, time):
     try:
         logger.info(color_attempt + "All or Nothing '{}'".format(time))
-        get_date = makesoup(url).find_all('td', {'class': 'date'})
-        get_numbers = makesoup(url).find_all('td', {'class': 'result'})
+        aor_data = makesoup(url)
+        get_date = aor_data.find_all('td', {'class': 'date'})
+        get_numbers = aor_data.find_all('td', {'class': 'result'})
     except Exception as e:
         logger.error(color_error + "(All or Nothing-{}): {}".format(time, e))
         return
@@ -230,7 +234,6 @@ def powerball():
             for line in f:
                 try:
                     date_data = line[0:10]
-                    # Reformat the date
                     date = datetime.strptime(date_data, "%m/%d/%Y")
                     date = date.strftime('%Y-%m-%d')
                 except Exception as e:
@@ -306,8 +309,9 @@ def mega_millions():
 def lucky_4_life(url):
     try:
         logger.info(color_attempt + "Lucky For Life")
-        get_date = makesoup(url).find_all('td', {'class': 'date'})
-        get_numbers = makesoup(url).find_all('td', {'class': 'result'})
+        lucky_data = makesoup(url)
+        get_date = lucky_data.find_all('td', {'class': 'date'})
+        get_numbers = lucky_data.find_all('td', {'class': 'result'})
     except Exception as e:
         logger.error(color_error + "(Lucky For Life): {}".format(e))
         return
