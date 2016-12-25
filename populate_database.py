@@ -8,8 +8,6 @@ import urllib2
 import logging
 from datetime import datetime
 
-from database_tools import DatabaseTools
-
 import wget
 from termcolor import colored
 from bs4 import BeautifulSoup
@@ -26,7 +24,7 @@ color_success = colored('[Success] ', 'green')
 def makesoup(url):
     """
         Request the page and parse the infromation
-           to return a soup object.
+        to return a soup object.
     """
     try:
         req = urllib2.Request(url)
@@ -83,9 +81,6 @@ def pick3(url, time):
         raise ValueError("Time must be either day or evening, got '{}'"
                          .format(time))
 
-    for line in pick3_list: 
-        DatabaseTools.insert_row('pick3', line)
-
     logger.info(color_success + "Pick 3 '{}'".format(time))
     # Returns data in a list of tuples in the following formats
     # ('D', u'2016/11/02, u'4,0,4')
@@ -122,9 +117,6 @@ def pick4(url, time):
         raise ValueError("Time must be either day or evening, got '{}'"
                          .format(time))
 
-    for line in pick4_list: 
-        DatabaseTools.insert_row('pick4', line)
-
     logger.info(color_success + "Pick 4 '{}'".format(time))
     # Returns data in a list of tuples in the following formats
     # ('D', u'2016/11/02', u'0,5,1,0')
@@ -144,7 +136,7 @@ def cash5(url):
         return
 
     date_list = [format_date(line.text) for line in get_date]
-    jackpot_list = [line.text for line in get_jackpot]
+    jackpot_list = [line.text.replace("$", "") for line in get_jackpot]
     number_list = []
 
     for line in get_numbers:
@@ -156,53 +148,11 @@ def cash5(url):
         number_list.append(line)
 
     cash5_list = zip(date_list, number_list, jackpot_list)
-
-    for line in cash5_list: 
-        DatabaseTools.insert_row('cash5', line)
     
     logger.info(color_success + "Cash 5")
     # Returns a list of tuples in this format:
-    # (u'2016/11/02', u'2,24,29,33,38', u'$100,000')
+    # (u'2016/11/02', u'2,24,29,33,38', u'100,000')
     return cash5_list
-
-
-def all_or_nothing(url, time):
-    try:
-        logger.info(color_attempt + "All or Nothing '{}'".format(time))
-        aor_data = makesoup(url)
-        get_date = aor_data.find_all('td', {'class': 'date'})
-        get_numbers = aor_data.find_all('td', {'class': 'result'})
-    except Exception as e:
-        logger.error(color_error + "(All or Nothing-{}): {}".format(time, e))
-        return
-
-    date_list = [format_date(line.text) for line in get_date]
-    number_list = []
-
-    for line in get_numbers:
-        # This is the data structure:
-        # u'\n3\n4\n6\n7\n9\n10\n11\n15\n17\n20\n23\n24\n\n'
-        line = re.sub('\n', ',', line.text[1:], 11)
-        # This is what we're working with now:
-        # u'\n3,6,7,9,10,11,15,17,20,23,24\n\n'
-        line = re.sub('\n', '', line)
-        number_list.append(line)
-
-    if time == 'day':
-        aor_list = zip("D" * len(date_list), date_list, number_list)
-    elif time == 'evening':
-        aor_list = zip("E" * len(date_list), date_list, number_list)
-    else:
-        raise ValueError("Time must be either day or evening, got '{}'"
-                         .format(time))
-
-    for line in aor_list: 
-        DatabaseTools.insert_row('all_or_nothing', line)
-
-    logger.info(color_success + "All or Nothing '{}'".format(time))
-    # Returns a list of tuples in this format:
-    # ('D', u'2016/11/02', u'1,3,6,9,11,12,14,15,16,19,20,22')
-    return aor_list
 
 
 def powerball():
@@ -222,6 +172,7 @@ def powerball():
 
     date_list = []
     number_list = []
+    powerball_list = []
 
     try:
         # Data structures:
@@ -234,31 +185,30 @@ def powerball():
             for line in f:
                 try:
                     date_data = line[0:10]
-                    date = datetime.strptime(date_data, "%m/%d/%Y")
-                    date = date.strftime('%Y-%m-%d')
+                    raw_date = datetime.strptime(date_data, "%m/%d/%Y")
+                    date = raw_date.strftime('%Y-%m-%d')
                 except Exception as e:
                     logger.error(color_error + "(Powerball): {}".format(e))
                     logger.error(color_error + "(Powerball): {}".format(line))
                     continue
                 raw_number_data = line[11:].strip().split("  ")
+                powerball = raw_number_data.pop(-1)
                 number_data = ','.join(raw_number_data)
                 date_list.append(date)
                 number_list.append(number_data)
+                powerball_list.append(powerball)
     except IOError:
         logger.error(color_error + "opening: {}".format(filename))
         return
 
-    powerball_list = zip(date_list, number_list)
+    powerball_data = zip(date_list, number_list, powerball_list)
     # Deleting: ('Draw Date ', ['WB1 WB2 WB3 WB4 WB5 PB', 'PP'])
     del powerball_list[0]
 
-    for line in powerball_list: 
-        DatabaseTools.insert_row('powerball', line)
-
     logger.info(color_success + "Powerball")
     # Returns a list of tuples in this format:
-    # ('2016/11/02', '18,54,61,13,37,05,2')
-    return powerball_list
+    # ('2016/11/02', '18,54,61,13,37,05', '2')
+    return powerball_data
 
 
 def mega_millions():
@@ -289,20 +239,17 @@ def mega_millions():
         date = line['draw_date']
         # Take out the time: 2007-05-11T00:00:00.000
         date = re.sub('T\d\d:\d\d:00\.000', '', date)
-        try:
-            numbers = line['winning_numbers'] + ' ' + line['mega_ball'] + \
-                      ' ' + line['multiplier']
-        except KeyError:
-            # line['multiplier'] isn't in older results
-            numbers = line['winning_numbers'] + ' ' + line['mega_ball']
-        mm_list.append((date, numbers))
-
-    for line in mm_list: 
-        DatabaseTools.insert_row('mega_millions', line)
+        get_numbers = line['winning_numbers']
+        numbers = get_numbers.replace(" ", ",")
+        megaball = line['mega_ball']
+        # Mulitiper isn't in older results so just pass None
+        multiplier = line.get('multiplier', None)
+        data = (date, numbers, megaball, multiplier)
+        mm_list.append(data)
 
     logger.info(color_success + "Mega Millions")
     # Returns a list of tuples in this format:
-    # (u'2016-11-01', u'19 24 31 39 45 13 02')
+    # (u'2016-11-01', u'19 24 31 39 45', '03', '05')
     return mm_list
 
 
@@ -332,9 +279,6 @@ def lucky_4_life(url):
 
     lucky_list = zip(date_list, number_list)
 
-    for line in lucky_list: 
-        DatabaseTools.insert_row('lucky_for_life', line)
-
     logger.info(color_success + "Lucky For Life")
     # Returns a list of tuples in this format:
     # (u'2016-11-01', u'3,4,12,32,45,5')
@@ -348,8 +292,6 @@ def main():
         'pick4_day': 'http://www.lotteryusa.com/north-carolina/midday-pick-4/year',
         'pick4_evening': 'http://www.lotteryusa.com/north-carolina/pick-4/year',
         'cash5': 'http://www.lotteryusa.com/north-carolina/cash-5/year',
-        'aor_day': 'http://www.lotteryusa.com/north-carolina/midday-all-or-nothing/year',
-        'aor_evening': 'http://www.lotteryusa.com/north-carolina/night-all-or-nothing/year',
         'lucky_4_life': 'http://www.lotteryusa.com/north-carolina/lucky-4-life/year'
     }
 
@@ -358,8 +300,6 @@ def main():
     pick4(games['pick4_day'], 'day')
     pick4(games['pick4_evening'], 'evening')
     cash5(games['cash5'])
-    all_or_nothing(games['aor_day'], 'day')
-    all_or_nothing(games['aor_evening'], 'evening')
     powerball()
     mega_millions()
     lucky_4_life(games['lucky_4_life'])
