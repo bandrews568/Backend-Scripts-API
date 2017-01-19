@@ -5,13 +5,26 @@ import re
 import time
 import json
 import urllib.request
+import urllib.error
 import logging
 from datetime import datetime
+
+from .models import (Pick3, Pick4, Cash5,
+                     PowerBall, MegaMillions,
+                     LuckyForLife)
 
 import wget
 from termcolor import colored
 from bs4 import BeautifulSoup
 
+GAMES = {
+        'pick3_day': 'http://www.lotteryusa.com/north-carolina/midday-3/year',
+        'pick3_evening': 'http://www.lotteryusa.com/north-carolina/pick-3/year',
+        'pick4_day': 'http://www.lotteryusa.com/north-carolina/midday-pick-4/year',
+        'pick4_evening': 'http://www.lotteryusa.com/north-carolina/pick-4/year',
+        'cash5': 'http://www.lotteryusa.com/north-carolina/cash-5/year',
+        'lucky_4_life': 'http://www.lotteryusa.com/north-carolina/lucky-4-life/year'
+}
 
 logger = logging.getLogger(__file__)
 logging.basicConfig(level=logging.ERROR and logging.INFO)
@@ -23,14 +36,14 @@ color_success = colored('[Success] ', 'green')
 
 def makesoup(url):
     """
-        Request the page and parse the infromation
+        Request the page and parse the information
         to return a soup object.
     """
     try:
-        req = urllib2.request.Request(url)
-        page = urllib2.request.urlopen(req)
+        req = urllib.request.Request(url)
+        page = urllib.request.urlopen(req)
         soup = BeautifulSoup(page.read(), 'html.parser')
-    except urllib2.HTTPError as e:
+    except urllib.error.HTTPError as e:
         logger.error(color_error + "{} Response: {}".format(e.code, url))
         return
     except Exception as e:
@@ -38,16 +51,17 @@ def makesoup(url):
         return
     return soup
 
+
 def format_date(date):
     """
         Change date to a format SQLite accepts.
         From: 'Thu, Nov 03, 2016'
-        To: '2016/11/03'
+        To: '2016-11-03'
     """
     try:
         og_date = datetime.strptime(date, "%a, %b %d, %Y")
-        f_date = og_date.strftime('%Y-%m-%d')
-        return f_date
+        formatted_date = og_date.strftime('%Y-%m-%d')
+        return formatted_date
     except Exception as e:
         logger.error(color_error + "format_date(): {}".format(e))
 
@@ -81,11 +95,16 @@ def pick3(url, time):
         raise ValueError("Time must be either day or evening, got '{}'"
                          .format(time))
 
-    logger.info(color_success + "Pick 3 '{}'".format(time))
-    # Returns data in a list of tuples in the following formats
+    for time, date, numbers in pick3_list:
+        row_data = Pick3()
+        row_data.drawing_time = time
+        row_data.drawing_date = date
+        row_data.drawing_numbers = numbers
+        row_data.save()
+    # Data formats
     # ('D', u'2016-11-02, u'4,0,4')
     # ('E', u'2016-11-02', u'2,4,5')
-    return pick3_list
+    logger.info(color_success + "Pick 3 '{}'".format(time))
 
 
 def pick4(url, time):
@@ -117,11 +136,17 @@ def pick4(url, time):
         raise ValueError("Time must be either day or evening, got '{}'"
                          .format(time))
 
-    logger.info(color_success + "Pick 4 '{}'".format(time))
-    # Returns data in a list of tuples in the following formats
+    for time, date, numbers in pick4_list:
+        row_data = Pick4()
+        row_data.drawing_time = time
+        row_data.drawing_date = date
+        row_data.drawing_numbers = numbers
+        row_data.save()
+
+    # Data formats
     # ('D', u'2016-11-02', u'0,5,1,0')
     # ('E', u'2016-11-02', u'9,2,6,6')
-    return pick4_list
+    logger.info(color_success + "Pick 4 '{}'".format(time))
 
 
 def cash5(url):
@@ -137,13 +162,13 @@ def cash5(url):
 
     date_list = [format_date(line.text) for line in get_date]
     # jackpot_list = [line.text.replace("$", "") for line in get_jackpot]
-    jackpot_list =[]
+    jackpot_list = []
     number_list = []
 
     for line in get_jackpot:
         line = re.sub('\$|,', '', line.text)
         jackpot_list.append(line)
-    
+
     for line in get_numbers:
         # This is the data structure: u'\n2\n6\n14\n31\n38\n\n'
         line = re.sub('\n', ',', line.text[1:], 4)
@@ -153,11 +178,16 @@ def cash5(url):
         number_list.append(line)
 
     cash5_list = zip(date_list, number_list, jackpot_list)
-    
-    logger.info(color_success + "Cash 5")
-    # Returns a list of tuples in this format:
+
+    for date, numbers, jackpot in cash5_list:
+        row_data = Cash5()
+        row_data.drawing_date = date
+        row_data.drawing_numbers = numbers
+        row_data.jackpot = jackpot
+        row_data.save()
+    # Data format
     # (u'2016-11-02', u'2,24,29,33,38', u'100000')
-    return cash5_list
+    logger.info(color_success + "Cash 5")
 
 
 def powerball():
@@ -210,10 +240,15 @@ def powerball():
     # Deleting: ('Draw Date ', ['WB1 WB2 WB3 WB4 WB5 PB', 'PP'])
     del powerball_list[0]
 
-    logger.info(color_success + "Powerball")
-    # Returns a list of tuples in this format:
+    for date, numbers, powerball in powerball_data:
+        row_data = PowerBall()
+        row_data.drawing_date = date
+        row_data.drawing_numbers = numbers
+        row_data.powerball = powerball
+        row_data.save()
+    # Data format
     # ('2016-11-02', '18,54,61,13,37,05', '2')
-    return powerball_data
+    logger.info(color_success + "Powerball")
 
 
 def mega_millions():
@@ -230,9 +265,9 @@ def mega_millions():
 
     try:
         logger.info(color_attempt + "Mega Millions")
-        open_page = urllib2.urlopen(url)
-        json_data = json.loads(open_page.read())
-    except urllib2.HTTPError as e:
+        open_page = urllib.request.urlopen(url).read().decode("utf-8")
+        json_data = json.loads(open_page)
+    except urllib.error.HTTPError as e:
         logger.error(color_error + "{} Response: {}".format(e.code, url))
         return
     except Exception as e:
@@ -252,10 +287,16 @@ def mega_millions():
         data = (date, numbers, megaball, multiplier)
         mm_list.append(data)
 
-    logger.info(color_success + "Mega Millions")
-    # Returns a list of tuples in this format:
+    for date, numbers, megaball, multiplier in mm_list:
+        row_data = MegaMillions()
+        row_data.drawing_date = date
+        row_data.drawing_numbers = numbers
+        row_data.megaball = megaball
+        row_data.multiplier = multiplier
+        row_data.save()
+    # Data format
     # (u'2016-11-01', u'19,24,31,39,45', '03', '05')
-    return mm_list
+    logger.info(color_success + "Mega Millions")
 
 
 def lucky_4_life(url):
@@ -284,31 +325,25 @@ def lucky_4_life(url):
 
     lucky_list = zip(date_list, number_list)
 
-    logger.info(color_success + "Lucky For Life")
-    # Returns a list of tuples in this format:
+    for date, numbers in lucky_list:
+        row_data = LuckyForLife()
+        row_data.drawing_date = date
+        row_data.drawing_numbers = numbers
+        row_data.save()
+    # Data format
     # (u'2016-11-01', u'3,4,12,32,45,5')
-    return lucky_list
+    logger.info(color_success + "Lucky For Life")
 
 
-def main():
-    games = {
-        'pick3_day': 'http://www.lotteryusa.com/north-carolina/midday-3/year',
-        'pick3_evening': 'http://www.lotteryusa.com/north-carolina/pick-3/year',
-        'pick4_day': 'http://www.lotteryusa.com/north-carolina/midday-pick-4/year',
-        'pick4_evening': 'http://www.lotteryusa.com/north-carolina/pick-4/year',
-        'cash5': 'http://www.lotteryusa.com/north-carolina/cash-5/year',
-        'lucky_4_life': 'http://www.lotteryusa.com/north-carolina/lucky-4-life/year'
-    }
-
-    pick3(games['pick3_day'], 'day')
-    pick3(games['pick3_evening'], 'evening')
-    pick4(games['pick4_day'], 'day')
-    pick4(games['pick4_evening'], 'evening')
-    cash5(games['cash5'])
+def populate_database():
+    pick3(GAMES['pick3_day'], 'day')
+    pick3(GAMES['pick3_evening'], 'evening')
+    pick4(GAMES['pick4_day'], 'day')
+    pick4(GAMES['pick4_evening'], 'evening')
+    cash5(GAMES['cash5'])
     powerball()
     mega_millions()
-    lucky_4_life(games['lucky_4_life'])
+    lucky_4_life(GAMES['lucky_4_life'])
 
 
-if __name__ == '__main__':
-    main()
+# populate_database()
